@@ -1,9 +1,17 @@
-import { Hono } from 'hono'
+import { Hono } from 'hono';
+import { drizzle } from 'drizzle-orm/d1';
+import { users } from './db/schema';
 
-const app = new Hono()
+type Bindings = {
+  DB: D1Database;
+};
 
-app.get('/', (c) => {
-  return c.text('Hello from Career AI Backend!')
-})
+const app = new Hono<{ Bindings: Bindings }>();
 
-export default app
+app.get('/', async (c) => {
+  const db = drizzle(c.env.DB);
+  const result = await db.select().from(users).all();
+  return c.json(result);
+});
+
+export default app;
