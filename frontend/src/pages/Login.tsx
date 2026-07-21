@@ -1,15 +1,15 @@
-import { useState } from "react"
-import { Link, useNavigate } from "react-router-dom"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { z } from "zod"
-import { Button } from "@/components/ui/button"
-import { Eye, EyeOff } from "lucide-react"
+import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+import { Button } from '@/components/ui/button'
+import { Eye, EyeOff } from 'lucide-react'
+import { auth } from '@/lib/api'
 
-// Validation schema
 const loginSchema = z.object({
-  email: z.string().email("Please enter a valid email"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  email: z.string().email('Please enter a valid email'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
 })
 
 type LoginFormData = z.infer<typeof loginSchema>
@@ -17,7 +17,7 @@ type LoginFormData = z.infer<typeof loginSchema>
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState("")
+  const [error, setError] = useState('')
   const navigate = useNavigate()
 
   const {
@@ -30,19 +30,15 @@ const Login = () => {
 
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true)
-    setError("")
-    
+    setError('')
     try {
-      // TODO: Replace with actual API call
-      console.log("Login data:", data)
-      
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-      
-      // Navigate to dashboard on success
-      navigate("/")
-    } catch (err) {
-      setError("Invalid email or password")
+      const response = await auth.login(data)
+      const { token, user } = response.data
+      localStorage.setItem('token', token)
+      localStorage.setItem('user', JSON.stringify(user))
+      navigate('/')
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Invalid email or password')
     } finally {
       setIsLoading(false)
     }
@@ -56,7 +52,7 @@ const Login = () => {
             Sign in to your account
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Or{" "}
+            Or{' '}
             <Link to="/register" className="font-medium text-blue-600 hover:text-blue-500">
               create a new account
             </Link>
@@ -79,7 +75,7 @@ const Login = () => {
                 id="email"
                 type="email"
                 autoComplete="email"
-                {...register("email")}
+                {...register('email')}
                 className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
                 placeholder="you@example.com"
               />
@@ -95,9 +91,9 @@ const Login = () => {
               <div className="relative mt-1">
                 <input
                   id="password"
-                  type={showPassword ? "text" : "password"}
+                  type={showPassword ? 'text' : 'password'}
                   autoComplete="current-password"
-                  {...register("password")}
+                  {...register('password')}
                   className="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
                   placeholder="••••••••"
                 />
@@ -126,7 +122,6 @@ const Login = () => {
                 Remember me
               </label>
             </div>
-
             <div className="text-sm">
               <Link to="/forgot-password" className="font-medium text-blue-600 hover:text-blue-500">
                 Forgot your password?
@@ -135,7 +130,7 @@ const Login = () => {
           </div>
 
           <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? "Signing in..." : "Sign in"}
+            {isLoading ? 'Signing in...' : 'Sign in'}
           </Button>
         </form>
       </div>

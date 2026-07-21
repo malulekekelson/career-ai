@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react"
+import { projects } from '@/lib/api'
 import { useNavigate } from "react-router-dom"
 import { useDropzone } from "react-dropzone"
 import { Button } from "@/components/ui/button"
@@ -77,49 +78,38 @@ const UploadPage = () => {
     return (bytes / (1024 * 1024)).toFixed(1) + " MB"
   }
 
-  // Simulate upload
-  const handleUpload = async () => {
-    if (!uploadedFile) return
 
-    setIsUploading(true)
-    setUploadedFile({ ...uploadedFile, status: "uploading", progress: 0 })
+// Inside handleUpload
+const handleUpload = async () => {
+  if (!uploadedFile) return
 
-    // Simulate progress
-    const interval = setInterval(() => {
-      setUploadedFile((prev) => {
-        if (!prev) return null
-        const newProgress = Math.min(prev.progress + 10, 90)
-        return { ...prev, progress: newProgress }
-      })
-    }, 300)
+  setIsUploading(true)
+  setUploadedFile({ ...uploadedFile, status: 'uploading', progress: 0 })
 
-    // Simulate API call
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 3000))
-      
-      clearInterval(interval)
-      
-      setUploadedFile((prev) => {
-        if (!prev) return null
-        return { ...prev, progress: 100, status: "success" }
-      })
+  try {
+    const response = await projects.upload(uploadedFile.file)
+    const { projectId } = response.data
 
-      // Redirect to project detail page after successful upload
-      setTimeout(() => {
-        // TODO: Replace with actual project ID from API response
-        navigate("/project/1")
-      }, 1500)
-    } catch (err) {
-      clearInterval(interval)
-      setUploadedFile((prev) => {
-        if (!prev) return null
-        return { ...prev, status: "error" }
-      })
-      setError("Upload failed. Please try again.")
-    } finally {
-      setIsUploading(false)
-    }
+    setUploadedFile((prev) => {
+      if (!prev) return null
+      return { ...prev, progress: 100, status: 'success' }
+    })
+
+    // Redirect to project detail
+    setTimeout(() => {
+      navigate(`/project/${projectId}`)
+    }, 1500)
+  } catch (err: any) {
+    console.error(err)
+    setUploadedFile((prev) => {
+      if (!prev) return null
+      return { ...prev, status: 'error' }
+    })
+    setError(err.response?.data?.error || 'Upload failed. Please try again.')
+  } finally {
+    setIsUploading(false)
   }
+}
 
   // Remove file
   const removeFile = () => {

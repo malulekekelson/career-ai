@@ -1,22 +1,22 @@
-import { useState } from "react"
-import { Link, useNavigate } from "react-router-dom"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { z } from "zod"
-import { Button } from "@/components/ui/button"
-import { Eye, EyeOff } from "lucide-react"
+import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+import { Button } from '@/components/ui/button'
+import { Eye, EyeOff } from 'lucide-react'
+import { auth } from '@/lib/api'
 
-// Validation schema
 const registerSchema = z
   .object({
-    fullName: z.string().min(2, "Full name is required"),
-    email: z.string().email("Please enter a valid email"),
-    password: z.string().min(6, "Password must be at least 6 characters"),
-    confirmPassword: z.string().min(6, "Please confirm your password"),
+    fullName: z.string().min(2, 'Full name is required'),
+    email: z.string().email('Please enter a valid email'),
+    password: z.string().min(6, 'Password must be at least 6 characters'),
+    confirmPassword: z.string().min(6, 'Please confirm your password'),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match",
-    path: ["confirmPassword"],
+    path: ['confirmPassword'],
   })
 
 type RegisterFormData = z.infer<typeof registerSchema>
@@ -25,7 +25,7 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState("")
+  const [error, setError] = useState('')
   const navigate = useNavigate()
 
   const {
@@ -38,19 +38,19 @@ const Register = () => {
 
   const onSubmit = async (data: RegisterFormData) => {
     setIsLoading(true)
-    setError("")
-
+    setError('')
     try {
-      // TODO: Replace with actual API call
-      console.log("Register data:", data)
-
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-
-      // Navigate to dashboard on success
-      navigate("/")
-    } catch (err) {
-      setError("Registration failed. Please try again.")
+      const response = await auth.register({
+        email: data.email,
+        password: data.password,
+        fullName: data.fullName,
+      })
+      const { token, user } = response.data
+      localStorage.setItem('token', token)
+      localStorage.setItem('user', JSON.stringify(user))
+      navigate('/')
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Registration failed')
     } finally {
       setIsLoading(false)
     }
@@ -64,7 +64,7 @@ const Register = () => {
             Create your account
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Already have an account?{" "}
+            Already have an account?{' '}
             <Link to="/login" className="font-medium text-blue-600 hover:text-blue-500">
               Sign in
             </Link>
@@ -87,7 +87,7 @@ const Register = () => {
                 id="fullName"
                 type="text"
                 autoComplete="name"
-                {...register("fullName")}
+                {...register('fullName')}
                 className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
                 placeholder="John Doe"
               />
@@ -104,7 +104,7 @@ const Register = () => {
                 id="email"
                 type="email"
                 autoComplete="email"
-                {...register("email")}
+                {...register('email')}
                 className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
                 placeholder="you@example.com"
               />
@@ -120,9 +120,9 @@ const Register = () => {
               <div className="relative mt-1">
                 <input
                   id="password"
-                  type={showPassword ? "text" : "password"}
+                  type={showPassword ? 'text' : 'password'}
                   autoComplete="new-password"
-                  {...register("password")}
+                  {...register('password')}
                   className="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
                   placeholder="••••••••"
                 />
@@ -146,9 +146,9 @@ const Register = () => {
               <div className="relative mt-1">
                 <input
                   id="confirmPassword"
-                  type={showConfirmPassword ? "text" : "password"}
+                  type={showConfirmPassword ? 'text' : 'password'}
                   autoComplete="new-password"
-                  {...register("confirmPassword")}
+                  {...register('confirmPassword')}
                   className="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
                   placeholder="••••••••"
                 />
@@ -167,7 +167,7 @@ const Register = () => {
           </div>
 
           <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? "Creating account..." : "Create account"}
+            {isLoading ? 'Creating account...' : 'Create account'}
           </Button>
         </form>
       </div>
