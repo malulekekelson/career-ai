@@ -3,6 +3,6 @@ main = "src/index.ts"
 compatibility_date = "2024-11-01"
 
 [[d1_databases]]
-binding = "DB"                          # The variable name in your Worker code
-database_name = "career-ai-db"          # The name you used
-database_id = "2054442b-e580-4887-872a-d9429e8cd8b9"  # The ID from Step 1
+binding = "DB"                           
+database_name = "career-ai-db"
+database_id = "2054442b-e580-4887-872a-d9429e8cd8b9"
