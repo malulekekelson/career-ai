@@ -5,12 +5,14 @@ import { eq, and } from 'drizzle-orm'
 import { users, projects, resumes, coverLetters, linkedinProfiles, skillGaps, careerReports } from './db/schema'
 import { hashPassword, verifyPassword } from './auth/password'
 import { generateToken, verifyToken } from './auth/jwt'
+import PDFParser from 'pdf2json'
 
 type Bindings = {
   DB: D1Database
   BUCKET: R2Bucket
   JWT_SECRET: string
   N8N_WEBHOOK_URL: string
+  N8N_WEBHOOK_SECRET: string
 }
 
 const app = new Hono<{ Bindings: Bindings }>()
@@ -109,6 +111,65 @@ app.post('/projects/upload', async (c) => {
   const arrayBuffer = await file.arrayBuffer()
   await c.env.BUCKET.put(key, arrayBuffer, { httpMetadata: { contentType: file.type } })
 
+  // --- Extract text from the file ---
+  let extractedText = ''
+  try {
+    console.log('🔍 Attempting to extract text from:', file.name, file.type)
+    const fileObject = await c.env.BUCKET.get(key)
+    if (!fileObject) {
+      throw new Error('File not found in R2 after upload')
+    }
+    console.log('✅ File retrieved from R2, size:', fileObject.size)
+
+    const arrayBufferContent = await fileObject.arrayBuffer()
+    console.log('📄 ArrayBuffer size:', arrayBufferContent.byteLength)
+
+    const buffer = Buffer.from(arrayBufferContent)
+    console.log('📄 Buffer created, length:', buffer.length)
+
+    if (file.type === 'application/pdf') {
+      console.log('📄 Parsing PDF with pdf2json...')
+      const pdfParser = new PDFParser()
+      const pdfData = await new Promise((resolve, reject) => {
+        pdfParser.on('pdfParser_dataError', reject)
+        pdfParser.on('pdfParser_dataReady', resolve)
+        pdfParser.parseBuffer(buffer)
+      })
+      const pages = (pdfData as any).Pages || []
+      let fullText = ''
+      for (const page of pages) {
+        const texts = page.Texts || []
+        for (const item of texts) {
+          if (item.R && item.R.length > 0) {
+            let raw = item.R[0].T
+            let decoded = raw
+            try {
+              decoded = decodeURIComponent(raw)
+            } catch (_) {
+              // If decoding fails, keep the raw text
+            }
+            fullText += decoded + ' '
+          }
+        }
+        fullText += '\n'
+      }
+      extractedText = fullText
+      console.log(`✅ PDF parsed, ${extractedText.length} characters`)
+    } else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+      console.log('📄 Parsing DOCX with mammoth...')
+      const mammoth = await import('mammoth')
+      const result = await mammoth.default.extractRawText({ buffer })
+      extractedText = result.value
+      console.log(`✅ DOCX parsed, ${extractedText.length} characters`)
+    } else {
+      throw new Error(`Unsupported file type: ${file.type}`)
+    }
+  } catch (err: any) {
+    console.error('❌ Text extraction error:', err.message)
+    console.error('❌ Stack trace:', err.stack)
+    extractedText = `Error extracting text: ${err.message}`
+  }
+
   const db = drizzle(c.env.DB)
   const project = await db.insert(projects).values({
     userId,
@@ -117,23 +178,37 @@ app.post('/projects/upload', async (c) => {
     originalFileKey: key,
   }).returning().get()
 
-  // Trigger n8n (fire and forget)
+  // Get user email for notification
+  const user = await db.select().from(users).where(eq(users.id, userId)).get()
+  const userEmail = user?.email || null
+
+  // Trigger n8n with the extracted text
   const n8nUrl = c.env.N8N_WEBHOOK_URL
   if (n8nUrl) {
-    fetch(n8nUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        projectId: project.id,
-        fileKey: key,
-        userId: userId,
-        // We'll send the file URL; n8n can fetch the file from R2 (public or signed)
-        fileUrl: `${c.env.R2_PUBLIC_URL}/${key}`,
-        userEmail: (await db.select().from(users).where(eq(users.id, userId)).get())?.email,
+    const payload = {
+      projectId: project.id,
+      fileKey: key,
+      userId: userId,
+      fileContent: extractedText,
+      fileName: file.name,
+      fileType: file.type,
+      userEmail: userEmail,
+    }
+    console.log('📤 Sending to n8n:', { projectId: project.id, contentLength: extractedText.length })
+
+    try {
+      const response = await fetch(n8nUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
       })
-    }).catch(err => console.error('n8n trigger failed:', err))
-    // Update status to processing
-    await db.update(projects).set({ status: 'processing' }).where(eq(projects.id, project.id))
+      console.log('✅ n8n response status:', response.status)
+      await db.update(projects).set({ status: 'processing' }).where(eq(projects.id, project.id))
+    } catch (err: any) {
+      console.error('❌ n8n trigger failed:', err.message)
+    }
+  } else {
+    console.error('❌ N8N_WEBHOOK_URL not set')
   }
 
   return c.json({ projectId: project.id, message: 'File uploaded, processing started' })

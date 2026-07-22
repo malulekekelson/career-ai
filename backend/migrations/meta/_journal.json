@@ -15,6 +15,13 @@
       "when": 1784648152007,
       "tag": "0001_steady_fat_cobra",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1784701034794,
+      "tag": "0002_aspiring_gertrude_yorkes",
+      "breakpoints": true
     }
   ]
 }

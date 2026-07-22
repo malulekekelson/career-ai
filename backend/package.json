@@ -15,12 +15,15 @@
     "@cloudflare/workers-types": "^5.20260721.1",
     "drizzle-orm": "^0.45.2",
     "hono": "^4.12.31",
-    "jose": "^6.2.3"
+    "jose": "^6.2.3",
+    "mammoth": "^1.12.0",
+    "pdf-parse": "^2.4.5",
+    "pdf2json": "^4.0.3"
   },
   "devDependencies": {
     "@types/aws-sdk": "^0.0.42",
     "@types/node": "^26.1.1",
-    "drizzle-kit": "^0.31.10",
-    "wrangler": "^4.112.0"
+    "drizzle-kit": "^0.18.1",
+    "wrangler": "^4.15.2"
   }
 }
